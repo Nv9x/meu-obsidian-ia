@@ -2,99 +2,650 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Brain - Autocomplete Edition</title>
+    <title>Brain — Constellation</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
     <style>
-        :root { --bg: #161618; --sidebar: #1e1e20; --text: #d4d4d4; --accent: #7b97aa; }
-        body { font-family: sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; height: 100vh; }
-        
-        #sidebar { width: 260px; background: var(--sidebar); border-right: 1px solid #333; display: flex; flex-direction: column; padding: 15px; z-index: 10; }
-        .nav-btn { background: #2a2a2c; color: white; border: 1px solid #444; padding: 12px; margin-bottom: 5px; cursor: pointer; border-radius: 5px; text-align: left; }
-        .nav-btn:hover { background: var(--accent); }
-        
-        #note-list { flex: 1; overflow-y: auto; margin-top: 15px; border-top: 1px solid #333; }
-        .note-item { padding: 10px; cursor: pointer; border-bottom: 1px solid #222; font-size: 0.9rem; }
-        .note-item:hover { color: var(--accent); }
+        :root {
+            --void: #080b12;
+            --deep: #0d1117;
+            --surface: #111827;
+            --border: rgba(99,179,237,0.12);
+            --star: #e8f4fd;
+            --nebula: #63b3ed;
+            --nebula2: #9f7aea;
+            --nebula3: #f687b3;
+            --text: #c9d8e8;
+            --muted: #5a7a99;
+            --accent: #63b3ed;
+        }
 
-        #main { flex: 1; display: flex; flex-direction: column; padding: 20px; position: relative; overflow: hidden; }
-        .view { display: none; flex: 1; height: 100%; }
-        .active { display: flex !important; flex-direction: column; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
-        input#title-input { background: transparent; border: none; color: white; font-size: 2rem; font-weight: bold; outline: none; margin-bottom: 10px; }
-        textarea#editor { flex: 1; background: transparent; border: none; color: #ccc; font-size: 1.1rem; resize: none; outline: none; line-height: 1.6; }
+        body {
+            font-family: 'Syne', sans-serif;
+            background: var(--void);
+            color: var(--text);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
 
-        /* Estilo do Autocomplete */
+        /* Starfield background */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image:
+                radial-gradient(1px 1px at 10% 15%, rgba(255,255,255,0.6) 0%, transparent 100%),
+                radial-gradient(1px 1px at 25% 40%, rgba(255,255,255,0.4) 0%, transparent 100%),
+                radial-gradient(1.5px 1.5px at 50% 10%, rgba(255,255,255,0.5) 0%, transparent 100%),
+                radial-gradient(1px 1px at 70% 60%, rgba(255,255,255,0.3) 0%, transparent 100%),
+                radial-gradient(2px 2px at 85% 25%, rgba(255,255,255,0.4) 0%, transparent 100%),
+                radial-gradient(1px 1px at 35% 75%, rgba(255,255,255,0.35) 0%, transparent 100%),
+                radial-gradient(1px 1px at 90% 80%, rgba(255,255,255,0.45) 0%, transparent 100%),
+                radial-gradient(1.5px 1.5px at 15% 90%, rgba(255,255,255,0.3) 0%, transparent 100%),
+                radial-gradient(1px 1px at 60% 45%, rgba(255,255,255,0.25) 0%, transparent 100%),
+                radial-gradient(1px 1px at 45% 30%, rgba(255,255,255,0.4) 0%, transparent 100%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Nebula glow */
+        body::after {
+            content: '';
+            position: fixed;
+            width: 60vw; height: 60vh;
+            top: -10%; right: -10%;
+            background: radial-gradient(ellipse, rgba(99,179,237,0.04) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* ── SIDEBAR ── */
+        #sidebar {
+            width: 240px;
+            background: rgba(13,17,23,0.95);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            padding: 20px 14px;
+            z-index: 10;
+            backdrop-filter: blur(20px);
+            flex-shrink: 0;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 24px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .logo-icon {
+            width: 32px; height: 32px;
+            background: radial-gradient(circle at 40% 40%, var(--nebula2), var(--nebula));
+            border-radius: 50%;
+            box-shadow: 0 0 12px rgba(99,179,237,0.5), 0 0 24px rgba(159,122,234,0.2);
+            position: relative;
+            flex-shrink: 0;
+        }
+        .logo-icon::after {
+            content: '';
+            position: absolute;
+            width: 6px; height: 6px;
+            background: white;
+            border-radius: 50%;
+            top: 6px; left: 6px;
+            box-shadow: 0 0 4px white;
+        }
+
+        .logo h1 {
+            font-size: 1.2rem;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            color: white;
+        }
+        .logo span { color: var(--nebula); }
+
+        .new-note-btn {
+            width: 100%;
+            background: linear-gradient(135deg, rgba(99,179,237,0.15), rgba(159,122,234,0.1));
+            border: 1px solid rgba(99,179,237,0.3);
+            color: white;
+            padding: 10px 14px;
+            cursor: pointer;
+            border-radius: 8px;
+            font-family: 'Syne', sans-serif;
+            font-weight: 600;
+            font-size: 0.85rem;
+            letter-spacing: 0.05em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+            margin-bottom: 16px;
+        }
+        .new-note-btn:hover {
+            background: linear-gradient(135deg, rgba(99,179,237,0.25), rgba(159,122,234,0.2));
+            border-color: var(--nebula);
+            box-shadow: 0 0 12px rgba(99,179,237,0.2);
+        }
+
+        .nav-section { margin-bottom: 16px; }
+        .nav-label {
+            font-family: 'Space Mono', monospace;
+            font-size: 0.6rem;
+            letter-spacing: 0.15em;
+            color: var(--muted);
+            text-transform: uppercase;
+            margin-bottom: 6px;
+            padding: 0 4px;
+        }
+
+        .nav-btn {
+            width: 100%;
+            background: transparent;
+            border: none;
+            color: var(--muted);
+            padding: 8px 12px;
+            cursor: pointer;
+            border-radius: 6px;
+            font-family: 'Syne', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 500;
+            text-align: left;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.15s;
+            margin-bottom: 2px;
+        }
+        .nav-btn:hover, .nav-btn.active {
+            background: rgba(99,179,237,0.08);
+            color: var(--star);
+        }
+        .nav-btn.active { color: var(--nebula); }
+        .nav-btn .icon { font-size: 0.95rem; opacity: 0.8; }
+
+        #note-list {
+            flex: 1;
+            overflow-y: auto;
+            margin-top: 4px;
+        }
+        #note-list::-webkit-scrollbar { width: 3px; }
+        #note-list::-webkit-scrollbar-track { background: transparent; }
+        #note-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+        .note-item {
+            padding: 8px 10px;
+            cursor: pointer;
+            border-radius: 6px;
+            font-size: 0.82rem;
+            color: var(--muted);
+            transition: all 0.15s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 1px;
+        }
+        .note-item::before {
+            content: '·';
+            color: var(--nebula);
+            font-size: 1.2rem;
+            line-height: 1;
+        }
+        .note-item:hover { background: rgba(255,255,255,0.04); color: var(--star); }
+        .note-item.selected { background: rgba(99,179,237,0.08); color: var(--nebula); }
+
+        /* ── MAIN ── */
+        #main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+        }
+
+        .view { display: none; flex: 1; height: 100%; flex-direction: column; }
+        .view.active { display: flex; }
+
+        /* ── EDITOR ── */
+        #view-editor {
+            padding: 36px 48px;
+            gap: 0;
+        }
+
+        .editor-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .word-count {
+            font-family: 'Space Mono', monospace;
+            font-size: 0.65rem;
+            color: var(--muted);
+            letter-spacing: 0.1em;
+        }
+
+        #title-input {
+            background: transparent;
+            border: none;
+            color: white;
+            font-family: 'Syne', sans-serif;
+            font-size: 2.2rem;
+            font-weight: 800;
+            outline: none;
+            width: 100%;
+            letter-spacing: -0.01em;
+            margin-bottom: 4px;
+        }
+        #title-input::placeholder { color: rgba(255,255,255,0.1); }
+
+        .editor-meta {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 24px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+        .editor-date {
+            font-family: 'Space Mono', monospace;
+            font-size: 0.65rem;
+            color: var(--muted);
+            letter-spacing: 0.08em;
+        }
+        .editor-dot {
+            width: 3px; height: 3px;
+            background: var(--muted);
+            border-radius: 50%;
+        }
+
+        .editor-area {
+            position: relative;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #editor {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--text);
+            font-family: 'Space Mono', monospace;
+            font-size: 0.92rem;
+            resize: none;
+            outline: none;
+            line-height: 1.8;
+            letter-spacing: 0.01em;
+        }
+        #editor::placeholder { color: rgba(255,255,255,0.1); font-style: italic; }
+
         #autocomplete-list {
             position: absolute;
-            background: #2a2a2c;
-            border: 1px solid var(--accent);
-            border-radius: 5px;
-            max-height: 150px;
+            background: #0f1520;
+            border: 1px solid var(--nebula);
+            border-radius: 8px;
+            max-height: 180px;
             overflow-y: auto;
             display: none;
             z-index: 1000;
-            width: 250px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            width: 260px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 0 0 1px rgba(99,179,237,0.1);
+            top: 0; left: 0;
         }
-        .suggestion-item { padding: 10px; cursor: pointer; border-bottom: 1px solid #333; font-size: 0.9rem; }
-        .suggestion-item:hover { background: var(--accent); color: white; }
+        .suggestion-item {
+            padding: 10px 14px;
+            cursor: pointer;
+            font-family: 'Space Mono', monospace;
+            font-size: 0.78rem;
+            color: var(--text);
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.1s;
+        }
+        .suggestion-item::before { content: '[['; color: var(--nebula); font-size: 0.65rem; }
+        .suggestion-item:hover { background: rgba(99,179,237,0.1); color: white; }
 
-        #brain-map { width: 100%; height: 90%; background: #111; border-radius: 8px; }
-        #ai-box { position: fixed; bottom: 20px; right: 20px; width: 280px; background: #222; border: 1px solid var(--accent); padding: 10px; border-radius: 8px; z-index: 100; }
+        /* ── BRAIN MAP ── */
+        #view-brain { padding: 0; position: relative; }
+
+        .map-header {
+            position: absolute;
+            top: 20px; left: 24px;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .map-title {
+            font-weight: 700;
+            font-size: 0.9rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+        .map-refresh {
+            background: rgba(99,179,237,0.1);
+            border: 1px solid rgba(99,179,237,0.2);
+            color: var(--nebula);
+            padding: 5px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-family: 'Space Mono', monospace;
+            font-size: 0.7rem;
+            letter-spacing: 0.05em;
+            transition: all 0.2s;
+        }
+        .map-refresh:hover { background: rgba(99,179,237,0.2); }
+
+        #brain-canvas {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            inset: 0;
+        }
+
+        /* ── TASKS ── */
+        #view-tasks { padding: 36px 48px; }
+
+        .tasks-header { margin-bottom: 28px; }
+        .tasks-header h2 {
+            font-size: 1.8rem;
+            font-weight: 800;
+            margin-bottom: 4px;
+        }
+        .tasks-header p { color: var(--muted); font-size: 0.85rem; }
+
+        .task-input-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 24px;
+        }
+        .task-input-row input {
+            flex: 1;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--border);
+            color: white;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-family: 'Syne', sans-serif;
+            font-size: 0.9rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .task-input-row input:focus { border-color: rgba(99,179,237,0.4); }
+        .task-input-row input::placeholder { color: var(--muted); }
+
+        .add-btn {
+            background: linear-gradient(135deg, var(--nebula), var(--nebula2));
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: 'Syne', sans-serif;
+            font-weight: 700;
+            font-size: 0.85rem;
+            transition: opacity 0.2s;
+        }
+        .add-btn:hover { opacity: 0.85; }
+
+        .task-item {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border);
+            padding: 12px 16px;
+            margin-bottom: 6px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.2s;
+        }
+        .task-item:hover { border-color: rgba(99,179,237,0.2); background: rgba(99,179,237,0.04); }
+
+        .task-check {
+            width: 16px; height: 16px;
+            border: 1.5px solid var(--muted);
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+        .task-check.done { background: var(--nebula); border-color: var(--nebula); }
+        .task-check.done::after { content: '✓'; color: white; font-size: 0.7rem; }
+
+        .task-text { font-size: 0.88rem; flex: 1; }
+        .task-text.done { text-decoration: line-through; color: var(--muted); }
+
+        /* ── AI PANEL ── */
+        #ai-panel {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 300px;
+            background: rgba(10,14,20,0.95);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            z-index: 100;
+            backdrop-filter: blur(20px);
+            overflow: hidden;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+            transition: all 0.3s;
+        }
+
+        .ai-header {
+            padding: 10px 14px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .ai-title {
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            color: var(--nebula);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .ai-status-dot {
+            width: 6px; height: 6px;
+            background: var(--nebula);
+            border-radius: 50%;
+            box-shadow: 0 0 6px var(--nebula);
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        #ai-out {
+            padding: 12px 14px;
+            font-family: 'Space Mono', monospace;
+            font-size: 0.72rem;
+            color: var(--muted);
+            min-height: 60px;
+            max-height: 120px;
+            overflow-y: auto;
+            line-height: 1.7;
+        }
+        #ai-out.has-response { color: var(--text); }
+
+        .ai-input-row {
+            padding: 10px;
+            display: flex;
+            gap: 6px;
+            border-top: 1px solid var(--border);
+        }
+        #ai-in {
+            flex: 1;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--border);
+            color: white;
+            padding: 7px 10px;
+            border-radius: 6px;
+            font-family: 'Space Mono', monospace;
+            font-size: 0.75rem;
+            outline: none;
+        }
+        #ai-in::placeholder { color: var(--muted); }
+
+        .ai-send {
+            background: var(--nebula);
+            border: none;
+            color: #080b12;
+            width: 32px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 1rem;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .ai-send:hover { background: white; }
+
+        /* ── SAVE INDICATOR ── */
+        #save-indicator {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(99,179,237,0.1);
+            border: 1px solid rgba(99,179,237,0.2);
+            color: var(--nebula);
+            padding: 5px 14px;
+            border-radius: 20px;
+            font-family: 'Space Mono', monospace;
+            font-size: 0.65rem;
+            letter-spacing: 0.1em;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            z-index: 50;
+        }
+        #save-indicator.visible { opacity: 1; }
+
+        /* Scrollbar geral */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 2px; }
     </style>
 </head>
 <body>
 
+<!-- SIDEBAR -->
 <div id="sidebar">
-    <h2 style="color:var(--accent); margin:0 0 10px 0;">🧠 Brain</h2>
-    <button class="nav-btn" style="background:var(--accent); font-weight:bold" onclick="novaNota()">+ Nova Nota</button>
-    <div id="note-list">Carregando...</div>
-    <div style="margin-top: auto; display: flex; flex-direction: column; gap: 5px;">
-        <button class="nav-btn" onclick="irPara('view-editor')">📝 Editor</button>
-        <button class="nav-btn" onclick="irPara('view-brain')">🌐 Brain (Mapa)</button>
-        <button class="nav-btn" onclick="irPara('view-tasks')">✅ Tarefas</button>
+    <div class="logo">
+        <div class="logo-icon"></div>
+        <h1>BRAIN<span>.</span></h1>
+    </div>
+
+    <button class="new-note-btn" onclick="novaNota()">
+        <span>+</span> Nova Nota
+    </button>
+
+    <div class="nav-section">
+        <div class="nav-label">Navegação</div>
+        <button class="nav-btn active" id="nav-editor" onclick="irPara('view-editor', this)">
+            <span class="icon">✦</span> Editor
+        </button>
+        <button class="nav-btn" id="nav-brain" onclick="irPara('view-brain', this)">
+            <span class="icon">◎</span> Constelação
+        </button>
+        <button class="nav-btn" id="nav-tasks" onclick="irPara('view-tasks', this)">
+            <span class="icon">◈</span> Tarefas
+        </button>
+    </div>
+
+    <div class="nav-section">
+        <div class="nav-label">Notas</div>
+        <div id="note-list"><span style="color:var(--muted); font-size:0.8rem; padding:8px;">Carregando...</span></div>
     </div>
 </div>
 
+<!-- MAIN -->
 <div id="main">
+
+    <!-- EDITOR VIEW -->
     <div id="view-editor" class="view active">
-        <input type="text" id="title-input" placeholder="Título da nota" onblur="salvar()">
-        
-        <!-- EDITOR COM AUTOCOMPLETE -->
-        <div style="position: relative; flex: 1; display: flex; flex-direction: column;">
-            <textarea id="editor" placeholder="Use [[ para conectar notas..." oninput="handleInput(event)"></textarea>
+        <div class="editor-header">
+            <div class="editor-meta" style="margin-bottom:0; border:none; padding:0;">
+                <span class="editor-date" id="current-date"></span>
+                <div class="editor-dot"></div>
+                <span class="word-count" id="word-count">0 palavras</span>
+            </div>
+        </div>
+        <input type="text" id="title-input" placeholder="Título da nota..." onblur="salvar()" oninput="salvar()">
+        <div class="editor-meta">
+            <span style="font-family:'Space Mono',monospace; font-size:0.65rem; color:var(--muted);">Use [[ para conectar notas</span>
+        </div>
+        <div class="editor-area">
+            <textarea id="editor" placeholder="Comece a escrever..." oninput="handleInput(event)"></textarea>
             <div id="autocomplete-list"></div>
         </div>
     </div>
 
+    <!-- BRAIN MAP VIEW -->
     <div id="view-brain" class="view">
-        <div style="display:flex; justify-content:space-between; margin-bottom: 10px;">
-            <h2 style="margin:0">Mapa Mental</h2>
-            <button class="nav-btn" onclick="gerarMapa()">🔄 Atualizar</button>
+        <div class="map-header">
+            <span class="map-title">Constelação</span>
+            <button class="map-refresh" onclick="gerarMapa()">↻ atualizar</button>
         </div>
-        <div id="brain-map"></div>
+        <canvas id="brain-canvas"></canvas>
     </div>
 
+    <!-- TASKS VIEW -->
     <div id="view-tasks" class="view">
-        <h2>Minha Rotina</h2>
-        <div style="display:flex; gap:10px; margin-bottom: 20px;">
-            <input type="text" id="task-in" style="flex:1; background:#2a2a2c; border:1px solid #444; color:white; padding:10px; border-radius:5px;" placeholder="O que fazer hoje?">
-            <button class="nav-btn" onclick="addTarefa()">Add</button>
+        <div class="tasks-header">
+            <h2>Tarefas</h2>
+            <p>Sua rotina de hoje</p>
+        </div>
+        <div class="task-input-row">
+            <input type="text" id="task-in" placeholder="O que fazer hoje?" onkeydown="if(event.key==='Enter') addTarefa()">
+            <button class="add-btn" onclick="addTarefa()">Adicionar</button>
         </div>
         <div id="task-list-container"></div>
     </div>
 </div>
 
-<div id="ai-box">
-    <div id="ai-out" style="font-size: 0.8rem; color: #aaa; margin-bottom: 8px; max-height: 100px; overflow-y: auto;">Como posso ajudar?</div>
-    <div style="display:flex; gap:5px">
-        <input type="text" id="ai-in" style="flex:1; background:#111; color:white; border:1px solid #444; padding:5px" placeholder="IA...">
-        <button onclick="perguntarIA()" style="background:var(--accent); border:none; color:white; padding:5px; cursor:pointer; border-radius:3px;">Ir</button>
+<!-- AI PANEL -->
+<div id="ai-panel">
+    <div class="ai-header">
+        <div class="ai-title">
+            <div class="ai-status-dot"></div>
+            GEMINI
+        </div>
+        <span style="font-family:'Space Mono'; font-size:0.65rem; color:var(--muted);">assistente</span>
+    </div>
+    <div id="ai-out">Como posso ajudar com suas notas?</div>
+    <div class="ai-input-row">
+        <input type="text" id="ai-in" placeholder="Pergunte algo..." onkeydown="if(event.key==='Enter') perguntarIA()">
+        <button class="ai-send" onclick="perguntarIA()">→</button>
     </div>
 </div>
 
+<!-- Save indicator -->
+<div id="save-indicator">SALVO</div>
+
 <script>
+    // ── CONFIGURAÇÃO ──
     const S_URL = 'https://rujblbhnmhilolzhtifz.supabase.co';
     const S_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ1amJsYmhubWhpbG9semh0aWZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMxOTYxOTMsImV4cCI6MjA4ODc3MjE5M30.SUf5-rfsgEJAPmfQYkoO8kMknMnBjlt3kWTUaWJ-Hs0';
     const G_KEY = 'AIzaSyByk5iNAGNXyN_99dKFm7EB7T15BonR_DA';
@@ -102,21 +653,36 @@
     const supabaseClient = supabase.createClient(S_URL, S_KEY);
     let idAtual = null;
     let notasLocais = [];
+    let saveTimeout = null;
 
-    function irPara(viewId) {
+    // Data atual
+    document.getElementById('current-date').innerText = new Date().toLocaleDateString('pt-BR', {
+        weekday: 'long', year: 'numeric', month: 'short', day: 'numeric'
+    });
+
+    // ── NAVEGAÇÃO ──
+    function irPara(viewId, btn) {
         document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
         document.getElementById(viewId).classList.add('active');
-        if(viewId === 'view-brain') gerarMapa();
+        if(btn) btn.classList.add('active');
+        if(viewId === 'view-brain') setTimeout(gerarMapa, 50);
     }
 
+    // ── NOTAS ──
     async function carregarNotas() {
-        const { data } = await supabaseClient.from('notas').select('*').order('id', { ascending: false });
+        const { data, error } = await supabaseClient.from('notas').select('*').order('id', { ascending: false });
+        if(error) { console.error('Supabase:', error); return; }
         notasLocais = data || [];
         const lista = document.getElementById('note-list');
         lista.innerHTML = '';
+        if(notasLocais.length === 0) {
+            lista.innerHTML = '<span style="color:var(--muted); font-size:0.8rem; padding:8px;">Nenhuma nota ainda</span>';
+            return;
+        }
         notasLocais.forEach(n => {
             const item = document.createElement('div');
-            item.className = 'note-item';
+            item.className = 'note-item' + (n.id === idAtual ? ' selected' : '');
             item.innerText = n.titulo || 'Sem título';
             item.onclick = () => abrirNota(n);
             lista.appendChild(item);
@@ -125,26 +691,46 @@
 
     function abrirNota(n) {
         idAtual = n.id;
-        document.getElementById('title-input').value = n.titulo;
-        document.getElementById('editor').value = n.conteudo;
-        irPara('view-editor');
+        document.getElementById('title-input').value = n.titulo || '';
+        document.getElementById('editor').value = n.conteudo || '';
+        atualizarWordCount();
+        irPara('view-editor', document.getElementById('nav-editor'));
+        document.querySelectorAll('.note-item').forEach(item => item.classList.remove('selected'));
+        event && event.target && event.target.classList.add('selected');
     }
 
     async function novaNota() {
-        const { data } = await supabaseClient.from('notas').insert([{ titulo: 'Nova Nota', conteudo: '' }]).select();
+        const { data, error } = await supabaseClient.from('notas').insert([{ titulo: 'Nova Nota', conteudo: '' }]).select();
+        if(error) { console.error(error); return; }
         if(data) { await carregarNotas(); abrirNota(data[0]); }
     }
 
     async function salvar() {
         if(!idAtual) return;
-        const t = document.getElementById('title-input').value;
-        const c = document.getElementById('editor').value;
-        await supabaseClient.from('notas').update({ titulo: t, conteudo: c }).eq('id', idAtual);
-        clearTimeout(window.tOut);
-        window.tOut = setTimeout(carregarNotas, 2000);
+        clearTimeout(saveTimeout);
+        saveTimeout = setTimeout(async () => {
+            const t = document.getElementById('title-input').value;
+            const c = document.getElementById('editor').value;
+            await supabaseClient.from('notas').update({ titulo: t, conteudo: c }).eq('id', idAtual);
+            mostrarSalvo();
+            carregarNotas();
+        }, 800);
+        atualizarWordCount();
     }
 
-    // --- LÓGICA DE AUTOCOMPLETE ---
+    function atualizarWordCount() {
+        const text = document.getElementById('editor').value;
+        const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+        document.getElementById('word-count').innerText = words + (words === 1 ? ' palavra' : ' palavras');
+    }
+
+    function mostrarSalvo() {
+        const el = document.getElementById('save-indicator');
+        el.classList.add('visible');
+        setTimeout(() => el.classList.remove('visible'), 1500);
+    }
+
+    // ── AUTOCOMPLETE ──
     function handleInput(e) {
         salvar();
         const el = e.target;
@@ -152,31 +738,27 @@
         const pos = el.selectionStart;
         const textBefore = val.substring(0, pos);
         const match = textBefore.match(/\[\[([^\]]*)$/);
-
         if (match) {
             const query = match[1].toLowerCase();
-            const suggestions = notasLocais.filter(n => n.titulo.toLowerCase().includes(query));
-            showSuggestions(suggestions, pos);
+            const suggestions = notasLocais.filter(n => n.titulo.toLowerCase().includes(query) && n.id !== idAtual);
+            showSuggestions(suggestions, el);
         } else {
             document.getElementById('autocomplete-list').style.display = 'none';
         }
     }
 
-    function showSuggestions(list, pos) {
+    function showSuggestions(list, el) {
         const div = document.getElementById('autocomplete-list');
         if (list.length === 0) { div.style.display = 'none'; return; }
-
         div.innerHTML = '';
-        list.forEach(n => {
+        list.slice(0, 6).forEach(n => {
             const item = document.createElement('div');
             item.className = 'suggestion-item';
             item.innerText = n.titulo;
-            item.onclick = () => completarLink(n.titulo);
+            item.onmousedown = (e) => { e.preventDefault(); completarLink(n.titulo); };
             div.appendChild(item);
         });
         div.style.display = 'block';
-        div.style.top = '40px'; // Fica no topo do editor para não atrapalhar o texto
-        div.style.left = '10px';
     }
 
     function completarLink(titulo) {
@@ -189,51 +771,249 @@
         document.getElementById('autocomplete-list').style.display = 'none';
         salvar();
         el.focus();
+        const newPos = textBefore.length;
+        el.setSelectionRange(newPos, newPos);
     }
 
-    // --- BRAIN MAP ---
+    document.getElementById('editor').addEventListener('keydown', (e) => {
+        if(e.key === 'Escape') document.getElementById('autocomplete-list').style.display = 'none';
+    });
+
+    // ── CONSTELAÇÃO (Canvas) ──
+    let animFrame = null;
+    let consteNodes = [];
+    let consteEdges = [];
+    let hoveredNode = null;
+    let offsetX = 0, offsetY = 0, isDragging = false, dragStart = null;
+
     function gerarMapa() {
-        const nodes = notasLocais.map(n => ({ id: n.titulo, label: n.titulo, color: '#7b97aa', font: {color:'#fff'} }));
-        const edges = [];
+        const canvas = document.getElementById('brain-canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = canvas.offsetWidth;
+        canvas.height = canvas.offsetHeight;
+        if(animFrame) cancelAnimationFrame(animFrame);
+
+        // Build graph
+        consteNodes = notasLocais.map((n, i) => {
+            const angle = (i / notasLocais.length) * Math.PI * 2;
+            const radius = 80 + Math.random() * (Math.min(canvas.width, canvas.height) * 0.28);
+            return {
+                id: n.titulo,
+                label: n.titulo,
+                x: canvas.width/2 + Math.cos(angle) * radius + (Math.random()-0.5)*80,
+                y: canvas.height/2 + Math.sin(angle) * radius + (Math.random()-0.5)*80,
+                r: 3 + Math.min((n.conteudo.match(/\[\[/g)||[]).length * 2, 10),
+                vx: 0, vy: 0,
+                glow: Math.random(),
+                twinkle: Math.random() * Math.PI * 2
+            };
+        });
+
+        consteEdges = [];
         notasLocais.forEach(n => {
-            const links = n.conteudo.match(/\[\[(.*?)\]\]/g);
-            if(links) {
-                links.forEach(l => {
-                    const dest = l.replace('[[','').replace(']]','');
-                    if(notasLocais.some(x => x.titulo === dest)) edges.push({ from: n.titulo, to: dest, color: '#444' });
-                });
+            const links = (n.conteudo || '').match(/\[\[(.*?)\]\]/g) || [];
+            links.forEach(l => {
+                const dest = l.replace('[[','').replace(']]','');
+                if(notasLocais.some(x => x.titulo === dest)) {
+                    consteEdges.push({ from: n.titulo, to: dest });
+                }
+            });
+        });
+
+        loop(ctx, canvas);
+    }
+
+    function loop(ctx, canvas) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Draw background star fog
+        ctx.save();
+        ctx.globalAlpha = 0.03;
+        const grad = ctx.createRadialGradient(canvas.width/2, canvas.height/2, 0, canvas.width/2, canvas.height/2, canvas.width/2);
+        grad.addColorStop(0, '#63b3ed');
+        grad.addColorStop(1, 'transparent');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0,0,canvas.width,canvas.height);
+        ctx.restore();
+
+        const t = Date.now() * 0.001;
+        const byId = {};
+        consteNodes.forEach(n => byId[n.id] = n);
+
+        // Edges
+        consteEdges.forEach(e => {
+            const a = byId[e.from], b = byId[e.to];
+            if(!a || !b) return;
+            const grad = ctx.createLinearGradient(a.x, a.y, b.x, b.y);
+            grad.addColorStop(0, 'rgba(99,179,237,0.25)');
+            grad.addColorStop(0.5, 'rgba(159,122,234,0.15)');
+            grad.addColorStop(1, 'rgba(99,179,237,0.25)');
+            ctx.beginPath();
+            ctx.moveTo(a.x, a.y);
+
+            // Slight curve
+            const mx = (a.x+b.x)/2 + (Math.random()-0.5)*0.5;
+            const my = (a.y+b.y)/2 + (Math.random()-0.5)*0.5;
+            ctx.quadraticCurveTo(mx, my, b.x, b.y);
+            ctx.strokeStyle = grad;
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+
+            // Animated particle along edge
+            const progress = (t * 0.3) % 1;
+            const px = a.x + (b.x - a.x) * progress;
+            const py = a.y + (b.y - a.y) * progress;
+            ctx.beginPath();
+            ctx.arc(px, py, 1, 0, Math.PI*2);
+            ctx.fillStyle = 'rgba(99,179,237,0.6)';
+            ctx.fill();
+        });
+
+        // Nodes
+        consteNodes.forEach(n => {
+            n.twinkle += 0.02;
+            const alpha = 0.6 + Math.sin(n.twinkle) * 0.4;
+            const isHovered = hoveredNode === n.id;
+
+            // Outer glow
+            const glowSize = isHovered ? n.r * 5 : n.r * 3;
+            const glowGrad = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, glowSize);
+            glowGrad.addColorStop(0, `rgba(99,179,237,${isHovered ? 0.3 : 0.1})`);
+            glowGrad.addColorStop(1, 'transparent');
+            ctx.beginPath();
+            ctx.arc(n.x, n.y, glowSize, 0, Math.PI*2);
+            ctx.fillStyle = glowGrad;
+            ctx.fill();
+
+            // Star body
+            ctx.beginPath();
+            ctx.arc(n.x, n.y, n.r, 0, Math.PI*2);
+            const nodeColor = isHovered ? '#ffffff' : `rgba(232,244,253,${alpha})`;
+            ctx.fillStyle = nodeColor;
+            ctx.shadowBlur = isHovered ? 20 : 8;
+            ctx.shadowColor = '#63b3ed';
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            // Star cross sparkle (for bigger nodes)
+            if(n.r > 5 || isHovered) {
+                ctx.save();
+                ctx.globalAlpha = 0.5 * alpha;
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 0.5;
+                const s = n.r + 4;
+                ctx.beginPath();
+                ctx.moveTo(n.x - s, n.y); ctx.lineTo(n.x + s, n.y);
+                ctx.moveTo(n.x, n.y - s); ctx.lineTo(n.x, n.y + s);
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            // Label
+            if(isHovered || n.r > 6) {
+                ctx.save();
+                ctx.globalAlpha = isHovered ? 1 : 0.7;
+                ctx.font = `${isHovered ? 600 : 400} ${isHovered ? '12' : '10'}px Syne`;
+                ctx.fillStyle = isHovered ? 'white' : '#7aacca';
+                ctx.textAlign = 'center';
+                ctx.fillText(
+                    n.label.length > 18 ? n.label.substring(0,18)+'…' : n.label,
+                    n.x, n.y - n.r - 7
+                );
+                ctx.restore();
             }
         });
-        new vis.Network(document.getElementById('brain-map'), { nodes, edges }, { physics: { enabled: true, barnesHut: { gravitationalConstant: -2000 } } });
+
+        animFrame = requestAnimationFrame(() => loop(ctx, canvas));
     }
 
+    // Canvas hover
+    document.getElementById('brain-canvas').addEventListener('mousemove', (e) => {
+        const canvas = document.getElementById('brain-canvas');
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+        let found = null;
+        consteNodes.forEach(n => {
+            const dx = n.x - mx, dy = n.y - my;
+            if(Math.sqrt(dx*dx+dy*dy) < n.r + 8) found = n.id;
+        });
+        hoveredNode = found;
+        canvas.style.cursor = found ? 'pointer' : 'default';
+    });
+
+    document.getElementById('brain-canvas').addEventListener('click', (e) => {
+        if(!hoveredNode) return;
+        const nota = notasLocais.find(n => n.titulo === hoveredNode);
+        if(nota) abrirNota(nota);
+    });
+
+    // ── TAREFAS ──
     function addTarefa() {
-        const txt = document.getElementById('task-in').value;
+        const txt = document.getElementById('task-in').value.trim();
         if(!txt) return;
-        const div = document.createElement('div');
-        div.style = "background:#252527; padding:10px; margin-bottom:5px; border-radius:5px;";
-        div.innerHTML = `<input type="checkbox"> <span>${txt}</span>`;
-        document.getElementById('task-list-container').appendChild(div);
+        const container = document.getElementById('task-list-container');
+        const item = document.createElement('div');
+        item.className = 'task-item';
+        const check = document.createElement('div');
+        check.className = 'task-check';
+        const label = document.createElement('span');
+        label.className = 'task-text';
+        label.innerText = txt;
+        check.onclick = () => {
+            check.classList.toggle('done');
+            label.classList.toggle('done');
+        };
+        item.appendChild(check);
+        item.appendChild(label);
+        container.appendChild(item);
         document.getElementById('task-in').value = '';
     }
 
+    // ── GEMINI ──
     async function perguntarIA() {
         const input = document.getElementById('ai-in');
         const out = document.getElementById('ai-out');
-        if(!input.value) return;
-        out.innerText = "Pensando...";
+        const query = input.value.trim();
+        if(!query) return;
+
+        out.classList.remove('has-response');
+        out.innerText = '· · ·';
+        input.value = '';
+
+        const contexto = document.getElementById('editor').value;
+        const prompt = contexto
+            ? `Contexto da nota atual:\n"${contexto.substring(0,500)}"\n\nPergunta: ${query}`
+            : query;
+
         try {
-            const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${G_KEY}`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ contents: [{ parts: [{ text: `Nota atual: ${document.getElementById('editor').value}. Pergunta: ${input.value}` }] }] })
-            });
+            const resp = await fetch(
+                `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${G_KEY}`,
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }],
+                        generationConfig: { maxOutputTokens: 300 }
+                    })
+                }
+            );
+
+            if(!resp.ok) {
+                const err = await resp.json();
+                out.innerText = '⚠ Erro: ' + (err.error?.message || resp.status);
+                return;
+            }
+
             const json = await resp.json();
-            out.innerText = json.candidates[0].content.parts[0].text;
-            input.value = '';
-        } catch(e) { out.innerText = "Erro na IA."; }
+            const answer = json?.candidates?.[0]?.content?.parts?.[0]?.text || 'Sem resposta.';
+            out.innerText = answer;
+            out.classList.add('has-response');
+        } catch(e) {
+            out.innerText = '⚠ Erro de conexão: ' + e.message;
+        }
     }
 
+    // Init
     carregarNotas();
 </script>
 </body>
