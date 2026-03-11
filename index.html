@@ -2,52 +2,57 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Zettelkasten AI - My Brain</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brain v3 - Estável</title>
+    <!-- Bibliotecas essenciais -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <style>
         :root { --bg: #161618; --sidebar: #1e1e20; --text: #d4d4d4; --accent: #7b97aa; }
-        body { font-family: sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; height: 100vh; overflow: hidden; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; height: 100vh; overflow: hidden; }
         
-        /* Sidebar corrigida para nunca ficar bloqueada */
+        /* Sidebar: Prioridade Máxima */
         #sidebar { 
-            width: 250px; 
-            background: var(--sidebar); 
-            border-right: 1px solid #333; 
-            display: flex; 
-            flex-direction: column; 
-            padding: 15px; 
-            z-index: 100; /* Garante que os botões fiquem no topo */
-            box-shadow: 2px 0 5px rgba(0,0,0,0.3);
+            width: 250px; background: var(--sidebar); border-right: 1px solid #333; 
+            display: flex; flex-direction: column; padding: 15px; z-index: 999; 
         }
-
-        #main { flex: 1; display: flex; flex-direction: column; position: relative; z-index: 1; }
         
-        .tab { display: none; flex: 1; padding: 20px; overflow-y: auto; height: 100%; }
+        #main { flex: 1; position: relative; display: flex; flex-direction: column; z-index: 1; }
+        
+        .tab { display: none; flex: 1; padding: 20px; height: 100%; overflow-y: auto; }
         .active { display: flex !important; flex-direction: column; }
         
-        textarea { flex: 1; background: transparent; color: white; border: none; outline: none; font-size: 1.1rem; resize: none; margin-top: 15px; line-height: 1.6; }
-        
-        .btn { background: var(--accent); color: white; border: none; padding: 10px; cursor: pointer; border-radius: 5px; margin: 5px 0; font-weight: bold; transition: 0.2s; }
-        .btn:hover { filter: brightness(1.2); }
-        
-        .note-item { padding: 10px; cursor: pointer; border-bottom: 1px solid #333; font-size: 0.9rem; }
-        .note-item:hover { background: #2a2a2c; }
+        .btn { 
+            background: #3a3a3c; color: white; border: 1px solid #555; padding: 12px; 
+            cursor: pointer; border-radius: 6px; margin: 5px 0; font-size: 0.9rem; text-align: left;
+        }
+        .btn:hover { background: var(--accent); }
+        .btn-main { background: var(--accent); font-weight: bold; text-align: center; }
 
-        #brain-container { flex: 1; width: 100%; height: 500px; background: #000; border-radius: 8px; margin-top: 10px; }
+        #note-list { flex: 1; overflow-y: auto; margin: 15px 0; border-top: 1px solid #333; }
+        .note-item { padding: 10px; cursor: pointer; border-bottom: 1px solid #2a2a2a; font-size: 0.85rem; }
+        .note-item:hover { color: var(--accent); background: #252527; }
 
-        #ai-chat { position: fixed; bottom: 20px; right: 20px; width: 280px; background: #252525; border: 1px solid var(--accent); border-radius: 10px; padding: 10px; z-index: 200; }
-        input { background: #333; color: white; border: 1px solid #555; padding: 8px; border-radius: 4px; }
+        textarea { 
+            flex: 1; background: transparent; color: white; border: none; outline: none; 
+            font-size: 1.1rem; resize: none; line-height: 1.6; margin-top: 10px;
+        }
+        
+        #brain-container { flex: 1; width: 100%; min-height: 400px; background: #000; border-radius: 8px; }
+
+        /* Chat IA */
+        #ai-chat { position: fixed; bottom: 15px; right: 15px; width: 280px; background: #252525; border: 1px solid var(--accent); border-radius: 10px; padding: 12px; z-index: 1000; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        #ai-input { background: #111; color: white; border: 1px solid #444; padding: 8px; width: calc(100% - 60px); border-radius: 4px; }
     </style>
 </head>
 <body>
 
 <div id="sidebar">
-    <h2 style="color: var(--accent); margin-bottom: 20px;">🧠 Brain</h2>
-    <button class="btn" onclick="createNewNote()">+ Nova Nota</button>
-    <div id="note-list" style="flex: 1; overflow-y: auto; margin: 10px 0;"></div>
-    <hr style="border: 0.5px solid #333; width: 100%;">
+    <h2 style="margin: 0 0 15px 0; font-size: 1.2rem; color: var(--accent);">🧠 Brain System</h2>
+    <button class="btn btn-main" onclick="createNewNote()">+ Nova Nota</button>
+    <div id="note-list">Carregando notas...</div>
+    
     <button class="btn" onclick="showTab('editor')">📝 Editor</button>
     <button class="btn" onclick="showTab('brain')">🌐 Brain Map</button>
     <button class="btn" onclick="showTab('canvas')">🎨 Canvas</button>
@@ -55,82 +60,165 @@
 </div>
 
 <div id="main">
-    <!-- Editor -->
     <div id="editor" class="tab active">
-        <h1 id="note-title" contenteditable="true" onblur="updateNote()" style="margin:0">Início</h1>
-        <textarea id="note-body" oninput="updateNote()" placeholder="Use [[Link]] para conectar notas..."></textarea>
+        <h1 id="note-title" contenteditable="true" onblur="updateNote()" style="margin:0; outline:none;">Início</h1>
+        <textarea id="note-body" oninput="updateNote()" placeholder="Escreva algo ou use [[Links]]..."></textarea>
     </div>
 
-    <!-- Brain Map -->
     <div id="brain" class="tab">
-        <h2>Mapa de Conexões</h2>
+        <h2>Brain Map</h2>
         <div id="brain-container"></div>
     </div>
 
-    <!-- Outras abas simplificadas para estabilidade -->
     <div id="canvas" class="tab">
         <h2>Canvas</h2>
-        <canvas id="c" width="800" height="500" style="border: 1px solid #444; background: white;"></canvas>
+        <button class="btn" onclick="addBox()" style="width:100px">+ Bloco</button>
+        <canvas id="c" width="800" height="500" style="border:1px solid #444; background:white;"></canvas>
     </div>
 
     <div id="tasks" class="tab">
         <h2>Tarefas</h2>
-        <input type="text" id="tIn" placeholder="Nova tarefa..."> <button onclick="addTask()" class="btn">Add</button>
-        <ul id="tList"></ul>
+        <input type="text" id="tIn" placeholder="Nova tarefa..." style="padding:10px; width:70%;"> 
+        <button class="btn" onclick="addTask()" style="display:inline;">Add</button>
+        <ul id="tList" style="margin-top:20px;"></ul>
     </div>
 </div>
 
 <div id="ai-chat">
-    <small>🤖 IA Gemini</small>
-    <div id="ai-response" style="font-size: 0.8rem; margin: 10px 0; max-height: 100px; overflow-y: auto;">Como posso ajudar?</div>
-    <input type="text" id="ai-input" style="width: 70%;" placeholder="Pergunte...">
-    <button onclick="askAI()" class="btn" style="padding: 5px;">Ir</button>
+    <div id="ai-response" style="font-size: 0.8rem; margin-bottom: 10px; max-height: 80px; overflow-y: auto; color: #aaa;">Como posso ajudar?</div>
+    <input type="text" id="ai-input" placeholder="Pergunte...">
+    <button onclick="askAI()" style="background:var(--accent); border:none; color:white; padding:8px; border-radius:4px; cursor:pointer;">Ir</button>
 </div>
 
 <script>
+    // Configurações - Não mude nada aqui
     const S_URL = 'https://rujblbhnmhilolzhtifz.supabase.co';
     const S_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ1amJsYmhubWhpbG9semh0aWZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMxOTYxOTMsImV4cCI6MjA4ODc3MjE5M30.SUf5-rfsgEJAPmfQYkoO8kMknMnBjlt3kWTUaWJ-Hs0';
     const G_KEY = 'AIzaSyByk5iNAGNXyN_99dKFm7EB7T15BonR_DA';
 
-    const meuSupa = supabase.createClient(S_URL, S_KEY);
+    // Inicialização segura
+    let supaApp;
+    try {
+        supaApp = window.supabase.createClient(S_URL, S_KEY);
+    } catch(e) {
+        document.getElementById('note-list').innerText = "Erro ao conectar ao banco.";
+    }
+
     let currentId = null;
     let todasNotas = [];
     let network = null;
+    let canvasInst;
 
+    // Função de Troca de Abas (Simples e Direta)
+    function showTab(id) {
+        const tabs = document.querySelectorAll('.tab');
+        tabs.forEach(t => t.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        
+        if (id === 'brain') renderBrain();
+        if (id === 'canvas' && !canvasInst) canvasInst = new fabric.Canvas('c');
+    }
+
+    // Carregar Notas
     async function loadNotes() {
-        try {
-            const { data } = await meuSupa.from('notas').select('*');
-            if (!data) return;
-            todasNotas = data;
-            const list = document.getElementById('note-list');
-            list.innerHTML = '';
-            data.forEach(n => {
-                const d = document.createElement('div');
-                d.className = 'note-item';
-                d.innerText = n.titulo || 'Sem título';
-                d.onclick = () => openNote(n);
-                list.appendChild(d);
-            });
-        } catch (e) { console.error("Erro ao carregar:", e); }
+        const { data, error } = await supaApp.from('notas').select('*');
+        if (error) return;
+        todasNotas = data;
+        const list = document.getElementById('note-list');
+        list.innerHTML = '';
+        data.forEach(n => {
+            const d = document.createElement('div');
+            d.className = 'note-item';
+            d.innerText = n.titulo || 'Nota sem título';
+            d.onclick = () => {
+                currentId = n.id;
+                document.getElementById('note-title').innerText = n.titulo;
+                document.getElementById('note-body').value = n.conteudo;
+                showTab('editor');
+            };
+            list.appendChild(d);
+        });
     }
 
-    function openNote(n) {
-        currentId = n.id;
-        document.getElementById('note-title').innerText = n.titulo;
-        document.getElementById('note-body').value = n.conteudo;
-        showTab('editor');
-    }
-
+    // Criar Nota
     async function createNewNote() {
-        const { data, error } = await meuSupa.from('notas').insert([{ titulo: 'Nova Nota', conteudo: '' }]).select();
+        const { data, error } = await supaApp.from('notas').insert([{ titulo: 'Nova Nota', conteudo: '' }]).select();
         if (data) {
             await loadNotes();
-            openNote(data[0]);
+            const nova = data[0];
+            currentId = nova.id;
+            document.getElementById('note-title').innerText = nova.titulo;
+            document.getElementById('note-body').value = nova.conteudo;
+            showTab('editor');
         }
     }
 
+    // Salvar Nota
     async function updateNote() {
         if (!currentId) return;
         const t = document.getElementById('note-title').innerText;
         const c = document.getElementById('note-body').value;
-        await meuSupa.from('notas').update({ titulo: t, conteudo: c }).eq('id', currentId);
+        await supaApp.from('notas').update({ titulo: t, conteudo: c }).eq('id', currentId);
+        // Atualiza a lista lateral sem "travar" a tela
+        loadNotes();
+    }
+
+    // Gerar o Grafo (Brain)
+    function renderBrain() {
+        if (todasNotas.length === 0) return;
+        const nodes = todasNotas.map(n => ({ id: n.titulo, label: n.titulo, color: '#7b97aa', font: {color: '#fff'} }));
+        const edges = [];
+        
+        todasNotas.forEach(n => {
+            const matches = n.conteudo.match(/\[\[(.*?)\]\]/g);
+            if (matches) {
+                matches.forEach(m => {
+                    const dest = m.replace('[[', '').replace(']]', '');
+                    if (todasNotas.some(x => x.titulo === dest)) {
+                        edges.push({ from: n.titulo, to: dest, color: '#555' });
+                    }
+                });
+            }
+        });
+
+        const data = { nodes: new vis.DataSet(nodes), edges: new vis.DataSet(edges) };
+        const options = { physics: { enabled: true }, nodes: { shape: 'dot', size: 10 } };
+        
+        if (network) network.destroy();
+        network = new vis.Network(document.getElementById('brain-container'), data, options);
+    }
+
+    // IA
+    async function askAI() {
+        const p = document.getElementById('ai-input').value;
+        if(!p) return;
+        document.getElementById('ai-response').innerText = "Processando...";
+        try {
+            const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${G_KEY}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ contents: [{ parts: [{ text: p }] }] })
+            });
+            const j = await r.json();
+            document.getElementById('ai-response').innerText = j.candidates[0].content.parts[0].text;
+            document.getElementById('ai-input').value = '';
+        } catch(e) { document.getElementById('ai-response').innerText = "Erro na IA."; }
+    }
+
+    function addTask() {
+        const v = document.getElementById('tIn').value;
+        if(v) {
+            document.getElementById('tList').innerHTML += `<li><input type="checkbox"> ${v}</li>`;
+            document.getElementById('tIn').value = '';
+        }
+    }
+
+    function addBox() {
+        if(canvasInst) canvasInst.add(new fabric.Rect({ left: 50, top: 50, fill: '#7b97aa', width: 60, height: 60 }));
+    }
+
+    // Iniciar tudo
+    window.onload = loadNotes;
+</script>
+</body>
+</html>
