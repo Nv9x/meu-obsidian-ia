@@ -5,108 +5,113 @@
     <title>Zettelkasten AI - My Brain</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
-    <!-- Biblioteca para o Grafo (Cérebro) -->
     <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
     <style>
         :root { --bg: #161618; --sidebar: #1e1e20; --text: #d4d4d4; --accent: #7b97aa; }
         body { font-family: sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; height: 100vh; overflow: hidden; }
-        #sidebar { width: 250px; background: var(--sidebar); border-right: 1px solid #333; display: flex; flex-direction: column; padding: 10px; overflow-y: auto; }
-        #main { flex: 1; display: flex; flex-direction: column; position: relative; }
-        .tab { display: none; flex: 1; padding: 20px; overflow: hidden; }
-        .active { display: flex !important; flex-direction: column; }
-        textarea { flex: 1; background: transparent; color: white; border: none; outline: none; font-size: 1.2rem; resize: none; margin-top: 20px; border-top: 1px solid #333; padding-top: 20px; }
-        #ai-chat { position: fixed; bottom: 20px; right: 20px; width: 300px; background: #252525; border: 1px solid var(--accent); border-radius: 10px; padding: 10px; box-shadow: 0 0 15px rgba(0,0,0,0.5); z-index: 1000; }
-        .btn { background: var(--accent); color: white; border: none; padding: 8px; cursor: pointer; border-radius: 5px; margin: 5px 0; text-align: left; }
-        .btn:hover { background: #5f7a8c; }
-        input { background: #333; color: white; border: 1px solid #555; padding: 8px; border-radius: 5px; }
-        .note-item { padding: 8px; cursor: pointer; border-bottom: 1px solid #333; font-size: 0.9rem; transition: 0.2s; }
-        .note-item:hover { background: #2a2a2c; color: var(--accent); }
         
-        /* Estilo do Grafo Brain */
-        #brain-container { flex: 1; width: 100%; height: 100%; background: #111; border-radius: 10px; }
+        /* Sidebar corrigida para nunca ficar bloqueada */
+        #sidebar { 
+            width: 250px; 
+            background: var(--sidebar); 
+            border-right: 1px solid #333; 
+            display: flex; 
+            flex-direction: column; 
+            padding: 15px; 
+            z-index: 100; /* Garante que os botões fiquem no topo */
+            box-shadow: 2px 0 5px rgba(0,0,0,0.3);
+        }
+
+        #main { flex: 1; display: flex; flex-direction: column; position: relative; z-index: 1; }
+        
+        .tab { display: none; flex: 1; padding: 20px; overflow-y: auto; height: 100%; }
+        .active { display: flex !important; flex-direction: column; }
+        
+        textarea { flex: 1; background: transparent; color: white; border: none; outline: none; font-size: 1.1rem; resize: none; margin-top: 15px; line-height: 1.6; }
+        
+        .btn { background: var(--accent); color: white; border: none; padding: 10px; cursor: pointer; border-radius: 5px; margin: 5px 0; font-weight: bold; transition: 0.2s; }
+        .btn:hover { filter: brightness(1.2); }
+        
+        .note-item { padding: 10px; cursor: pointer; border-bottom: 1px solid #333; font-size: 0.9rem; }
+        .note-item:hover { background: #2a2a2c; }
+
+        #brain-container { flex: 1; width: 100%; height: 500px; background: #000; border-radius: 8px; margin-top: 10px; }
+
+        #ai-chat { position: fixed; bottom: 20px; right: 20px; width: 280px; background: #252525; border: 1px solid var(--accent); border-radius: 10px; padding: 10px; z-index: 200; }
+        input { background: #333; color: white; border: 1px solid #555; padding: 8px; border-radius: 4px; }
     </style>
 </head>
 <body>
 
 <div id="sidebar">
-    <h3 style="color: var(--accent)">🧠 My Brain</h3>
-    <button class="btn" onclick="createNewNote()">➕ Nova Nota</button>
-    <div id="note-list"></div>
-    <hr style="width:100%; border: 0.5px solid #333; margin: 20px 0;">
-    <button class="btn" onclick="showTab('editor')">📝 Notas</button>
-    <button class="btn" onclick="showTab('brain')">🌐 Brain (Grafo)</button>
+    <h2 style="color: var(--accent); margin-bottom: 20px;">🧠 Brain</h2>
+    <button class="btn" onclick="createNewNote()">+ Nova Nota</button>
+    <div id="note-list" style="flex: 1; overflow-y: auto; margin: 10px 0;"></div>
+    <hr style="border: 0.5px solid #333; width: 100%;">
+    <button class="btn" onclick="showTab('editor')">📝 Editor</button>
+    <button class="btn" onclick="showTab('brain')">🌐 Brain Map</button>
     <button class="btn" onclick="showTab('canvas')">🎨 Canvas</button>
     <button class="btn" onclick="showTab('tasks')">✅ Tarefas</button>
 </div>
 
 <div id="main">
-    <!-- EDITOR -->
+    <!-- Editor -->
     <div id="editor" class="tab active">
-        <h1 id="note-title" contenteditable="true" onblur="updateNote()">Início</h1>
-        <textarea id="note-body" oninput="updateNote()" placeholder="Conecte ideias usando [[Nome da Nota]]..."></textarea>
+        <h1 id="note-title" contenteditable="true" onblur="updateNote()" style="margin:0">Início</h1>
+        <textarea id="note-body" oninput="updateNote()" placeholder="Use [[Link]] para conectar notas..."></textarea>
     </div>
 
-    <!-- BRAIN (GRAFO) -->
+    <!-- Brain Map -->
     <div id="brain" class="tab">
-        <div style="display:flex; justify-content: space-between; align-items: center;">
-            <h2>Visualização do Cérebro</h2>
-            <button class="btn" onclick="renderBrain()">🔄 Atualizar Mapa</button>
-        </div>
+        <h2>Mapa de Conexões</h2>
         <div id="brain-container"></div>
     </div>
 
-    <!-- CANVAS -->
+    <!-- Outras abas simplificadas para estabilidade -->
     <div id="canvas" class="tab">
-        <h2>Quadro Branco</h2>
-        <button class="btn" onclick="addBox()" style="width: fit-content;">+ Bloco</button>
-        <canvas id="c" width="1000" height="600" style="border: 1px solid #444; background: white; border-radius: 8px;"></canvas>
+        <h2>Canvas</h2>
+        <canvas id="c" width="800" height="500" style="border: 1px solid #444; background: white;"></canvas>
     </div>
 
-    <!-- TAREFAS -->
     <div id="tasks" class="tab">
         <h2>Tarefas</h2>
-        <div style="display: flex; gap: 10px;">
-            <input type="text" id="tIn" style="flex: 1;" placeholder="Nova tarefa..."> 
-            <button class="btn" onclick="addTask()">Add</button>
-        </div>
-        <ul id="tList" style="list-style: none; padding: 0; margin-top: 20px;"></ul>
+        <input type="text" id="tIn" placeholder="Nova tarefa..."> <button onclick="addTask()" class="btn">Add</button>
+        <ul id="tList"></ul>
     </div>
 </div>
 
 <div id="ai-chat">
-    <small>🤖 Assistente Gemini</small>
-    <div id="ai-response" style="font-size: 0.85rem; margin: 10px 0; max-height: 150px; overflow-y: auto; color: #bbb;">Olá! Estou pronto para ajudar.</div>
-    <div style="display: flex; gap: 5px;">
-        <input type="text" id="ai-input" style="flex: 1;" placeholder="Pergunte...">
-        <button class="btn" onclick="askAI()">Ir</button>
-    </div>
+    <small>🤖 IA Gemini</small>
+    <div id="ai-response" style="font-size: 0.8rem; margin: 10px 0; max-height: 100px; overflow-y: auto;">Como posso ajudar?</div>
+    <input type="text" id="ai-input" style="width: 70%;" placeholder="Pergunte...">
+    <button onclick="askAI()" class="btn" style="padding: 5px;">Ir</button>
 </div>
 
 <script>
-    // --- CHAVES (Mantenha as suas originais) ---
     const S_URL = 'https://rujblbhnmhilolzhtifz.supabase.co';
     const S_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ1amJsYmhubWhpbG9semh0aWZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMxOTYxOTMsImV4cCI6MjA4ODc3MjE5M30.SUf5-rfsgEJAPmfQYkoO8kMknMnBjlt3kWTUaWJ-Hs0';
-    const GEMINI_KEY = 'AIzaSyByk5iNAGNXyN_99dKFm7EB7T15BonR_DA';
+    const G_KEY = 'AIzaSyByk5iNAGNXyN_99dKFm7EB7T15BonR_DA';
 
     const meuSupa = supabase.createClient(S_URL, S_KEY);
     let currentId = null;
-    let canvas;
     let todasNotas = [];
     let network = null;
 
     async function loadNotes() {
-        const { data, error } = await meuSupa.from('notas').select('*');
-        if (error) return;
-        todasNotas = data;
-        const list = document.getElementById('note-list');
-        list.innerHTML = '';
-        data.forEach(n => {
-            const div = document.createElement('div');
-            div.className = 'note-item';
-            div.innerText = n.titulo;
-            div.onclick = () => openNote(n);
-            list.appendChild(div);
-        });
+        try {
+            const { data } = await meuSupa.from('notas').select('*');
+            if (!data) return;
+            todasNotas = data;
+            const list = document.getElementById('note-list');
+            list.innerHTML = '';
+            data.forEach(n => {
+                const d = document.createElement('div');
+                d.className = 'note-item';
+                d.innerText = n.titulo || 'Sem título';
+                d.onclick = () => openNote(n);
+                list.appendChild(d);
+            });
+        } catch (e) { console.error("Erro ao carregar:", e); }
     }
 
     function openNote(n) {
@@ -117,66 +122,15 @@
     }
 
     async function createNewNote() {
-        const { data } = await meuSupa.from('notas').insert([{ titulo: 'Nova Nota', conteudo: '' }]).select();
-        loadNotes(); openNote(data[0]);
+        const { data, error } = await meuSupa.from('notas').insert([{ titulo: 'Nova Nota', conteudo: '' }]).select();
+        if (data) {
+            await loadNotes();
+            openNote(data[0]);
+        }
     }
 
     async function updateNote() {
-        if(!currentId) return;
+        if (!currentId) return;
         const t = document.getElementById('note-title').innerText;
         const c = document.getElementById('note-body').value;
         await meuSupa.from('notas').update({ titulo: t, conteudo: c }).eq('id', currentId);
-        // Pequeno atraso para não sobrecarregar
-        setTimeout(loadNotes, 2000);
-    }
-
-    function showTab(id) {
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        document.getElementById(id).classList.add('active');
-        if(id === 'canvas' && !canvas) canvas = new fabric.Canvas('c');
-        if(id === 'brain') renderBrain();
-    }
-
-    // --- LÓGICA DO BRAIN (GRAFO) ---
-    function renderBrain() {
-        const nodes = [];
-        const edges = [];
-        
-        // 1. Criar os pontos (Notas)
-        todasNotas.forEach(nota => {
-            nodes.push({ id: nota.titulo, label: nota.titulo, color: '#7b97aa', font: {color: '#fff'} });
-        });
-
-        // 2. Criar as linhas (Conexões [[ ]])
-        todasNotas.forEach(nota => {
-            const regex = /\[\[(.*?)\]\]/g;
-            let match;
-            while ((match = regex.exec(nota.conteudo)) !== null) {
-                const linkDestino = match[1];
-                // Só cria a linha se a nota de destino existir
-                if (todasNotas.some(n => n.titulo === linkDestino)) {
-                    edges.push({ from: nota.titulo, to: linkDestino, color: '#444' });
-                }
-            }
-        });
-
-        const data = { nodes: new vis.DataSet(nodes), edges: new vis.DataSet(edges) };
-        const options = {
-            physics: { enabled: true, barnesHut: { gravitationalConstant: -2000 } },
-            nodes: { shape: 'dot', size: 16 }
-        };
-        
-        if (network) network.destroy();
-        network = new vis.Network(document.getElementById('brain-container'), data, options);
-
-        // Ao clicar numa bolinha do cérebro, abre a nota!
-        network.on("click", function (params) {
-            if (params.nodes.length > 0) {
-                const tituloClicado = params.nodes[0];
-                const notaObj = todasNotas.find(n => n.titulo === tituloClicado);
-                if (notaObj) openNote(notaObj);
-            }
-        });
-    }
-
-    function addBox() { canvas.add(new fabric.Rect({ left: 100, top: 100, fill: '#7b97aa', width
