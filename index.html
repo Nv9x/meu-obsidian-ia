@@ -2,223 +2,178 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Brain v3 - Estável</title>
-    <!-- Bibliotecas essenciais -->
+    <title>Meu Cérebro Digital</title>
+    <!-- Bibliotecas -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <style>
         :root { --bg: #161618; --sidebar: #1e1e20; --text: #d4d4d4; --accent: #7b97aa; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; height: 100vh; overflow: hidden; }
+        body { font-family: sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; height: 100vh; }
         
-        /* Sidebar: Prioridade Máxima */
-        #sidebar { 
-            width: 250px; background: var(--sidebar); border-right: 1px solid #333; 
-            display: flex; flex-direction: column; padding: 15px; z-index: 999; 
-        }
+        /* Barra Lateral */
+        #sidebar { width: 260px; background: var(--sidebar); border-right: 1px solid #333; display: flex; flex-direction: column; padding: 15px; }
+        .nav-btn { background: #2a2a2c; color: white; border: 1px solid #444; padding: 12px; margin-bottom: 5px; cursor: pointer; border-radius: 5px; text-align: left; }
+        .nav-btn:hover { background: var(--accent); }
         
-        #main { flex: 1; position: relative; display: flex; flex-direction: column; z-index: 1; }
-        
-        .tab { display: none; flex: 1; padding: 20px; height: 100%; overflow-y: auto; }
+        /* Lista de Notas */
+        #note-list { flex: 1; overflow-y: auto; margin-top: 15px; border-top: 1px solid #333; }
+        .note-item { padding: 10px; cursor: pointer; border-bottom: 1px solid #222; font-size: 0.9rem; }
+        .note-item:hover { color: var(--accent); }
+
+        /* Área Principal */
+        #main { flex: 1; display: flex; flex-direction: column; padding: 20px; position: relative; }
+        .view { display: none; flex: 1; }
         .active { display: flex !important; flex-direction: column; }
-        
-        .btn { 
-            background: #3a3a3c; color: white; border: 1px solid #555; padding: 12px; 
-            cursor: pointer; border-radius: 6px; margin: 5px 0; font-size: 0.9rem; text-align: left;
-        }
-        .btn:hover { background: var(--accent); }
-        .btn-main { background: var(--accent); font-weight: bold; text-align: center; }
 
-        #note-list { flex: 1; overflow-y: auto; margin: 15px 0; border-top: 1px solid #333; }
-        .note-item { padding: 10px; cursor: pointer; border-bottom: 1px solid #2a2a2a; font-size: 0.85rem; }
-        .note-item:hover { color: var(--accent); background: #252527; }
+        input#title-input { background: transparent; border: none; color: white; font-size: 2rem; font-weight: bold; outline: none; margin-bottom: 10px; }
+        textarea#editor { flex: 1; background: transparent; border: none; color: #ccc; font-size: 1.1rem; resize: none; outline: none; line-height: 1.6; }
 
-        textarea { 
-            flex: 1; background: transparent; color: white; border: none; outline: none; 
-            font-size: 1.1rem; resize: none; line-height: 1.6; margin-top: 10px;
-        }
-        
-        #brain-container { flex: 1; width: 100%; min-height: 400px; background: #000; border-radius: 8px; }
+        /* Brain Map */
+        #brain-map { width: 100%; height: 100%; background: #111; border-radius: 8px; }
 
         /* Chat IA */
-        #ai-chat { position: fixed; bottom: 15px; right: 15px; width: 280px; background: #252525; border: 1px solid var(--accent); border-radius: 10px; padding: 12px; z-index: 1000; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
-        #ai-input { background: #111; color: white; border: 1px solid #444; padding: 8px; width: calc(100% - 60px); border-radius: 4px; }
+        #ai-box { position: fixed; bottom: 20px; right: 20px; width: 280px; background: #222; border: 1px solid var(--accent); padding: 10px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        #ai-out { font-size: 0.8rem; color: #aaa; margin-bottom: 8px; max-height: 100px; overflow-y: auto; }
     </style>
 </head>
 <body>
 
 <div id="sidebar">
-    <h2 style="margin: 0 0 15px 0; font-size: 1.2rem; color: var(--accent);">🧠 Brain System</h2>
-    <button class="btn btn-main" onclick="createNewNote()">+ Nova Nota</button>
-    <div id="note-list">Carregando notas...</div>
+    <h2 style="color:var(--accent)">🧠 Brain</h2>
+    <button class="nav-btn" style="background:var(--accent); font-weight:bold" onclick="novaNota()">+ Nova Nota</button>
     
-    <button class="btn" onclick="showTab('editor')">📝 Editor</button>
-    <button class="btn" onclick="showTab('brain')">🌐 Brain Map</button>
-    <button class="btn" onclick="showTab('canvas')">🎨 Canvas</button>
-    <button class="btn" onclick="showTab('tasks')">✅ Tarefas</button>
+    <div id="note-list">Carregando...</div>
+
+    <div style="margin-top: auto;">
+        <button class="nav-btn" style="width:100%" onclick="irPara('view-editor')">📝 Editor</button>
+        <button class="nav-btn" style="width:100%" onclick="irPara('view-brain')">🌐 Brain (Mapa)</button>
+    </div>
 </div>
 
 <div id="main">
-    <div id="editor" class="tab active">
-        <h1 id="note-title" contenteditable="true" onblur="updateNote()" style="margin:0; outline:none;">Início</h1>
-        <textarea id="note-body" oninput="updateNote()" placeholder="Escreva algo ou use [[Links]]..."></textarea>
+    <!-- Tela do Editor -->
+    <div id="view-editor" class="view active">
+        <input type="text" id="title-input" placeholder="Título da nota" onblur="salvar()">
+        <textarea id="editor" placeholder="Comece a escrever... use [[Link]] para conectar." oninput="salvar()"></textarea>
     </div>
 
-    <div id="brain" class="tab">
-        <h2>Brain Map</h2>
-        <div id="brain-container"></div>
-    </div>
-
-    <div id="canvas" class="tab">
-        <h2>Canvas</h2>
-        <button class="btn" onclick="addBox()" style="width:100px">+ Bloco</button>
-        <canvas id="c" width="800" height="500" style="border:1px solid #444; background:white;"></canvas>
-    </div>
-
-    <div id="tasks" class="tab">
-        <h2>Tarefas</h2>
-        <input type="text" id="tIn" placeholder="Nova tarefa..." style="padding:10px; width:70%;"> 
-        <button class="btn" onclick="addTask()" style="display:inline;">Add</button>
-        <ul id="tList" style="margin-top:20px;"></ul>
+    <!-- Tela do Mapa (Brain) -->
+    <div id="view-brain" class="view">
+        <div style="display:flex; justify-content:space-between">
+            <h2>Mapa do Cérebro</h2>
+            <button class="nav-btn" onclick="gerarMapa()">🔄 Atualizar Mapa</button>
+        </div>
+        <div id="brain-map"></div>
     </div>
 </div>
 
-<div id="ai-chat">
-    <div id="ai-response" style="font-size: 0.8rem; margin-bottom: 10px; max-height: 80px; overflow-y: auto; color: #aaa;">Como posso ajudar?</div>
-    <input type="text" id="ai-input" placeholder="Pergunte...">
-    <button onclick="askAI()" style="background:var(--accent); border:none; color:white; padding:8px; border-radius:4px; cursor:pointer;">Ir</button>
+<div id="ai-box">
+    <div id="ai-out">Como posso te ajudar hoje?</div>
+    <input type="text" id="ai-in" style="width:70%; background:#111; color:white; border:1px solid #444; padding:5px" placeholder="Pergunte...">
+    <button onclick="perguntarIA()" style="background:var(--accent); border:none; color:white; padding:5px; cursor:pointer">Ir</button>
 </div>
 
 <script>
-    // Configurações - Não mude nada aqui
+    // CHAVES
     const S_URL = 'https://rujblbhnmhilolzhtifz.supabase.co';
     const S_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ1amJsYmhubWhpbG9semh0aWZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMxOTYxOTMsImV4cCI6MjA4ODc3MjE5M30.SUf5-rfsgEJAPmfQYkoO8kMknMnBjlt3kWTUaWJ-Hs0';
     const G_KEY = 'AIzaSyByk5iNAGNXyN_99dKFm7EB7T15BonR_DA';
 
-    // Inicialização segura
-    let supaApp;
-    try {
-        supaApp = window.supabase.createClient(S_URL, S_KEY);
-    } catch(e) {
-        document.getElementById('note-list').innerText = "Erro ao conectar ao banco.";
+    const supabaseClient = supabase.createClient(S_URL, S_KEY);
+    let idAtual = null;
+    let notasLocais = [];
+
+    // 1. Alternar entre Editor e Mapa
+    function irPara(idDaView) {
+        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+        document.getElementById(idDaView).classList.add('active');
+        if(idDaView === 'view-brain') gerarMapa();
     }
 
-    let currentId = null;
-    let todasNotas = [];
-    let network = null;
-    let canvasInst;
-
-    // Função de Troca de Abas (Simples e Direta)
-    function showTab(id) {
-        const tabs = document.querySelectorAll('.tab');
-        tabs.forEach(t => t.classList.remove('active'));
-        document.getElementById(id).classList.add('active');
-        
-        if (id === 'brain') renderBrain();
-        if (id === 'canvas' && !canvasInst) canvasInst = new fabric.Canvas('c');
-    }
-
-    // Carregar Notas
-    async function loadNotes() {
-        const { data, error } = await supaApp.from('notas').select('*');
-        if (error) return;
-        todasNotas = data;
-        const list = document.getElementById('note-list');
-        list.innerHTML = '';
-        data.forEach(n => {
-            const d = document.createElement('div');
-            d.className = 'note-item';
-            d.innerText = n.titulo || 'Nota sem título';
-            d.onclick = () => {
-                currentId = n.id;
-                document.getElementById('note-title').innerText = n.titulo;
-                document.getElementById('note-body').value = n.conteudo;
-                showTab('editor');
-            };
-            list.appendChild(d);
+    // 2. Carregar Lista de Notas
+    async function carregarNotas() {
+        const { data } = await supabaseClient.from('notas').select('*').order('id', { ascending: false });
+        notasLocais = data || [];
+        const lista = document.getElementById('note-list');
+        lista.innerHTML = '';
+        notasLocais.forEach(n => {
+            const item = document.createElement('div');
+            item.className = 'note-item';
+            item.innerText = n.titulo || 'Nota sem título';
+            item.onclick = () => abrirNota(n);
+            lista.appendChild(item);
         });
     }
 
-    // Criar Nota
-    async function createNewNote() {
-        const { data, error } = await supaApp.from('notas').insert([{ titulo: 'Nova Nota', conteudo: '' }]).select();
-        if (data) {
-            await loadNotes();
-            const nova = data[0];
-            currentId = nova.id;
-            document.getElementById('note-title').innerText = nova.titulo;
-            document.getElementById('note-body').value = nova.conteudo;
-            showTab('editor');
+    // 3. Abrir uma Nota
+    function abrirNota(n) {
+        idAtual = n.id;
+        document.getElementById('title-input').value = n.titulo;
+        document.getElementById('editor').value = n.conteudo;
+        irPara('view-editor');
+    }
+
+    // 4. Criar Nova Nota
+    async function novaNota() {
+        const { data } = await supabaseClient.from('notas').insert([{ titulo: 'Nova Nota', conteudo: '' }]).select();
+        if(data) {
+            await carregarNotas();
+            abrirNota(data[0]);
         }
     }
 
-    // Salvar Nota
-    async function updateNote() {
-        if (!currentId) return;
-        const t = document.getElementById('note-title').innerText;
-        const c = document.getElementById('note-body').value;
-        await supaApp.from('notas').update({ titulo: t, conteudo: c }).eq('id', currentId);
-        // Atualiza a lista lateral sem "travar" a tela
-        loadNotes();
+    // 5. Salvar (sem travar)
+    async function salvar() {
+        if(!idAtual) return;
+        const t = document.getElementById('title-input').value;
+        const c = document.getElementById('editor').value;
+        await supabaseClient.from('notas').update({ titulo: t, conteudo: c }).eq('id', idAtual);
+        // Atualiza a lista lateral em 2 segundos para não dar lag
+        clearTimeout(window.saveTimer);
+        window.saveTimer = setTimeout(carregarNotas, 2000);
     }
 
-    // Gerar o Grafo (Brain)
-    function renderBrain() {
-        if (todasNotas.length === 0) return;
-        const nodes = todasNotas.map(n => ({ id: n.titulo, label: n.titulo, color: '#7b97aa', font: {color: '#fff'} }));
+    // 6. Gerar Mapa Mental (Brain)
+    function gerarMapa() {
+        if(notasLocais.length === 0) return;
+        const nodes = notasLocais.map(n => ({ id: n.titulo, label: n.titulo, color: '#7b97aa', font: {color:'#fff'} }));
         const edges = [];
-        
-        todasNotas.forEach(n => {
-            const matches = n.conteudo.match(/\[\[(.*?)\]\]/g);
-            if (matches) {
-                matches.forEach(m => {
-                    const dest = m.replace('[[', '').replace(']]', '');
-                    if (todasNotas.some(x => x.titulo === dest)) {
-                        edges.push({ from: n.titulo, to: dest, color: '#555' });
+        notasLocais.forEach(n => {
+            const links = n.conteudo.match(/\[\[(.*?)\]\]/g);
+            if(links) {
+                links.forEach(l => {
+                    const destino = l.replace('[[','').replace(']]','');
+                    if(notasLocais.some(nota => nota.titulo === destino)) {
+                        edges.push({ from: n.titulo, to: destino });
                     }
                 });
             }
         });
-
-        const data = { nodes: new vis.DataSet(nodes), edges: new vis.DataSet(edges) };
-        const options = { physics: { enabled: true }, nodes: { shape: 'dot', size: 10 } };
-        
-        if (network) network.destroy();
-        network = new vis.Network(document.getElementById('brain-container'), data, options);
+        new vis.Network(document.getElementById('brain-map'), { nodes, edges }, { physics: true });
     }
 
-    // IA
-    async function askAI() {
-        const p = document.getElementById('ai-input').value;
-        if(!p) return;
-        document.getElementById('ai-response').innerText = "Processando...";
+    // 7. IA
+    async function perguntarIA() {
+        const input = document.getElementById('ai-in');
+        const out = document.getElementById('ai-out');
+        const contexto = document.getElementById('editor').value;
+        if(!input.value) return;
+        out.innerText = "Pensando...";
         try {
-            const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${G_KEY}`, {
+            const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${G_KEY}`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ contents: [{ parts: [{ text: p }] }] })
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ contents: [{ parts: [{ text: `Nota atual: ${contexto}. Pergunta: ${input.value}` }] }] })
             });
-            const j = await r.json();
-            document.getElementById('ai-response').innerText = j.candidates[0].content.parts[0].text;
-            document.getElementById('ai-input').value = '';
-        } catch(e) { document.getElementById('ai-response').innerText = "Erro na IA."; }
+            const json = await resp.json();
+            out.innerText = json.candidates[0].content.parts[0].text;
+            input.value = '';
+        } catch(e) { out.innerText = "Erro na IA."; }
     }
 
-    function addTask() {
-        const v = document.getElementById('tIn').value;
-        if(v) {
-            document.getElementById('tList').innerHTML += `<li><input type="checkbox"> ${v}</li>`;
-            document.getElementById('tIn').value = '';
-        }
-    }
-
-    function addBox() {
-        if(canvasInst) canvasInst.add(new fabric.Rect({ left: 50, top: 50, fill: '#7b97aa', width: 60, height: 60 }));
-    }
-
-    // Iniciar tudo
-    window.onload = loadNotes;
+    // Iniciar
+    carregarNotas();
 </script>
+
 </body>
 </html>
